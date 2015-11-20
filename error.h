@@ -6,7 +6,8 @@ typedef enum escpos_error {
 
     ESCPOS_ERROR_SOCK,
     ESCPOS_ERROR_INVALID_ADDR,
-    ESCPOS_ERROR_CONNECTION_FAILED
+    ESCPOS_ERROR_CONNECTION_FAILED,
+    ESCPOS_ERROR_SEND_FAILED
 } escpos_error;
 
 extern escpos_error escpos_last_error();

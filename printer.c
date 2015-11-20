@@ -42,3 +42,25 @@ void escpos_printer_destroy(escpos_printer *printer)
     close(printer->sockfd);
     free(printer);
 }
+
+int escpos_printer_raw(escpos_printer *printer, const char * const message, const int len)
+{
+    assert(printer != NULL);
+
+    int total = len;
+    int sent = 0;
+    int bytes = 0;
+
+    // Make sure send() sends all data
+    while (sent < total) {
+        bytes = send(printer->sockfd, message, total, 0);
+        if (bytes == -1) {
+            last_error = ESCPOS_ERROR_SEND_FAILED;
+            break;
+        } else {
+            sent += bytes;
+        }
+    }
+
+    return bytes != -1;
+}
