@@ -9,5 +9,6 @@ extern escpos_printer *escpos_printer_network(const char * const addr, const sho
 extern void escpos_printer_destroy(escpos_printer *printer);
 
 extern int escpos_printer_raw(escpos_printer *printer, const char * const message, const int len);
+extern int escpos_printer_cut(escpos_printer *printer);
 
 #endif

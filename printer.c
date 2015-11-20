@@ -6,6 +6,7 @@
 #include <string.h>
 #include <unistd.h>
 #include "error_private.h"
+#include "constants.h"
 
 escpos_printer *escpos_printer_network(const char * const addr, const short port)
 {
@@ -63,4 +64,9 @@ int escpos_printer_raw(escpos_printer *printer, const char * const message, cons
     }
 
     return bytes != -1;
+}
+
+int escpos_printer_cut(escpos_printer *printer)
+{
+    return escpos_printer_raw(printer, ESCPOS_CMD_CUT, 3);
 }
