@@ -70,3 +70,11 @@ int escpos_printer_cut(escpos_printer *printer)
 {
     return escpos_printer_raw(printer, ESCPOS_CMD_CUT, 3);
 }
+
+int escpos_printer_feed(escpos_printer *printer, const unsigned char lines)
+{
+    char buffer[3];
+    strncpy(buffer, ESCPOS_CMD_FEED, 2);
+    buffer[2] = lines;
+    return escpos_printer_raw(printer, buffer, sizeof(buffer));
+}
