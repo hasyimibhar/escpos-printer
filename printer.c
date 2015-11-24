@@ -63,7 +63,7 @@ int escpos_printer_raw(escpos_printer *printer, const char * const message, cons
         }
     }
 
-    return bytes != -1;
+    return !(sent == total);
 }
 
 int escpos_printer_cut(escpos_printer *printer)
