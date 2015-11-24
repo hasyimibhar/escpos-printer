@@ -254,15 +254,22 @@ int escpos_printer_image(escpos_printer *printer, const char * const image_path)
         int print_height = ESCPOS_CHUNK_DOT_HEIGHT - ESCPOS_CHUNK_OVERLAP;
         unsigned char pixel_bits[byte_width * ESCPOS_CHUNK_DOT_HEIGHT];
 
-        int y = 0;
-        while (y * print_height < height) {
+        int c = 0;
+        int chunks = 0;
+        if (height <= ESCPOS_CHUNK_DOT_HEIGHT) {
+            chunks = 1;
+        } else {
+            chunks = (height / print_height) + (height % print_height ? 1 : 0);
+        }
+
+        while (c < chunks) {
             // Because the printer's image buffer has a limited memory,
             // if the image's height exceeds ESCPOS_CHUNK_DOT_HEIGHT pixels,
             // it is printed in chunks of x * ESCPOS_CHUNK_DOT_HEIGHT pixels.
-            int chunk_height = (y + 1) * ESCPOS_CHUNK_DOT_HEIGHT <= height ? ESCPOS_CHUNK_DOT_HEIGHT : height - (y * ESCPOS_CHUNK_DOT_HEIGHT);
+            int chunk_height = (c + 1) * ESCPOS_CHUNK_DOT_HEIGHT <= height ? ESCPOS_CHUNK_DOT_HEIGHT : height - (c * ESCPOS_CHUNK_DOT_HEIGHT);
 
             int bitmap_w, bitmap_h;
-            convert_image_to_bits(pixel_bits, image_data + (y * print_height * width * comp), width, chunk_height, comp, &bitmap_w, &bitmap_h);
+            convert_image_to_bits(pixel_bits, image_data + (c * print_height * width * comp), width, chunk_height, comp, &bitmap_w, &bitmap_h);
 
             if ((result = escpos_printer_upload(printer, pixel_bits, bitmap_w, bitmap_h)) == 0) {
                 result = escpos_printer_print(printer);
@@ -272,7 +279,7 @@ int escpos_printer_image(escpos_printer *printer, const char * const image_path)
                 break;
             }
 
-            y += 1;
+            c += 1;
         }
     }
 
