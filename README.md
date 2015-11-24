@@ -2,6 +2,14 @@
 
 This is a C library for operating thermal printers by sending ESC/POS commands.
 
+## Compiling
+
+```sh
+make
+```
+
+This will create `dist` folder, which contains `libescposprinter.a` and some public header files.
+
 ## Sample Usage
 
 This sample uses `stb_image.h` from [nothings/stb](https://github.com/nothings/stb):
