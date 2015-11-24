@@ -70,8 +70,8 @@ extern int escpos_printer_feed(escpos_printer *printer, const int lines);
 
 // Prints an image
 //
-// NOTE: This function will send the image data to the printer's buffer before sending the print command,
-// instead of printing the image directly.
+// NOTE: This function will send the image data to the printer's buffer
+// before sending the print command, instead of printing the image directly.
 //
 // Params:
 // - printer: the printer
@@ -81,6 +81,9 @@ extern int escpos_printer_feed(escpos_printer *printer, const int lines);
 //
 // Return value: 0 is successful, non-zero otherwise.
 // If it fails, use escpos_last_error() to get the error code.
-extern int escpos_printer_image(escpos_printer *printer, const unsigned char * const image_data, const int width, const int height);
+extern int escpos_printer_image(escpos_printer *printer,
+                                const unsigned char * const image_data,
+                                const int width,
+                                const int height);
 
 #endif

@@ -180,7 +180,10 @@ void convert_image_to_bits(unsigned char *pixel_bits,
     *bitmap_h = h + padding_b;
 }
 
-int escpos_printer_upload(escpos_printer *printer, const unsigned char *pixel_bits, const int w, const int h)
+int escpos_printer_upload(escpos_printer *printer,
+                          const unsigned char *pixel_bits,
+                          const int w,
+                          const int h)
 {
     assert(printer != NULL);
     assert(pixel_bits != NULL);
@@ -225,7 +228,10 @@ int escpos_printer_print(escpos_printer *printer)
     return result;
 }
 
-int escpos_printer_image(escpos_printer *printer, const unsigned char * const image_data, const int width, const int height)
+int escpos_printer_image(escpos_printer *printer,
+                         const unsigned char * const image_data,
+                         const int width,
+                         const int height)
 {
     assert(printer != NULL);
     assert(image_data != NULL);
@@ -251,10 +257,18 @@ int escpos_printer_image(escpos_printer *printer, const unsigned char * const im
             // Because the printer's image buffer has a limited memory,
             // if the image's height exceeds ESCPOS_CHUNK_DOT_HEIGHT pixels,
             // it is printed in chunks of x * ESCPOS_CHUNK_DOT_HEIGHT pixels.
-            int chunk_height = (c + 1) * ESCPOS_CHUNK_DOT_HEIGHT <= height ? ESCPOS_CHUNK_DOT_HEIGHT : height - (c * ESCPOS_CHUNK_DOT_HEIGHT);
+            int chunk_height = (c + 1) * ESCPOS_CHUNK_DOT_HEIGHT <= height ?
+                ESCPOS_CHUNK_DOT_HEIGHT :
+                height - (c * ESCPOS_CHUNK_DOT_HEIGHT);
 
             int bitmap_w, bitmap_h;
-            convert_image_to_bits(pixel_bits, image_data + (c * print_height * width), width, chunk_height, &bitmap_w, &bitmap_h);
+            convert_image_to_bits(
+                pixel_bits,
+                image_data + (c * print_height * width),
+                width,
+                chunk_height,
+                &bitmap_w,
+                &bitmap_h);
 
             if ((result = escpos_printer_upload(printer, pixel_bits, bitmap_w, bitmap_h)) == 0) {
                 result = escpos_printer_print(printer);
