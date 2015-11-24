@@ -123,21 +123,75 @@ int convert_to_bit(const unsigned char *pixel, const int comp)
     return bit;
 }
 
-void convert_image_to_bits(unsigned char *pixel_bits, const unsigned char *image_data, const int w, const int h, const int comp)
+// Calculates the padding required so that the size fits in 32 bits
+void calculate_padding(const int size, int *padding_l, int *padding_r)
+{
+    assert(padding_l != NULL);
+    assert(padding_r != NULL);
+
+    if (size % 32 == 0) {
+        *padding_l = 0;
+        *padding_r = 0;
+    } else {
+        int padding = 32 - (size % 32);
+        *padding_l = padding / 2;
+        *padding_r = padding / 2 + (padding % 32 == 0 ? 0 : 1);
+    }
+}
+
+void convert_image_to_bits(unsigned char *pixel_bits,
+                           const unsigned char *image_data,
+                           const int w,
+                           const int h,
+                           const int comp,
+                           int *bitmap_w,
+                           int *bitmap_h)
 {
     assert(pixel_bits != NULL);
     assert(image_data != NULL);
+    assert(bitmap_w != NULL);
+    assert(bitmap_h != NULL);
+
+    int padding_l, padding_r, padding_t, padding_b;
+    calculate_padding(w, &padding_l, &padding_r);
+    calculate_padding(h, &padding_t, &padding_b);
+
+    // We only need to add the padding to the bottom for height.
+    // This is because when printing long images, only the last
+    // chunk will have the irregular height.
+    padding_b += padding_t;
+    int padded_h = h + padding_b;
+
+    for (int x = 0; x < padding_l; x++) {
+        for (int y = 0; y < padded_h; y++) {
+            int pi = (x * padded_h) + y;
+            int curr_byte = pi / 8;
+            set_bit(&pixel_bits[curr_byte], 7 - (pi % 8), 0);
+        }
+    }
 
     for (int x = 0; x < w; x++) {
-        for (int y = 0; y < h; y++) {
-            int pi = x * h + y;
+        for (int y = 0; y < padded_h; y++) {
+            int pi = (padding_l * padded_h) + (x * padded_h) + y;
             int curr_byte = pi / 8;
-            int bit = convert_to_bit(image_data + (y * w * comp) + (x * comp), comp);
+            int bit = y < h ? convert_to_bit(image_data + (y * w * comp) + (x * comp), comp) : 0;
 
             // The bit is set from left to right
             set_bit(&pixel_bits[curr_byte], 7 - (pi % 8), bit);
         }
     }
+
+    for (int x = 0; x < padding_r; x++) {
+        for (int y = 0; y < padded_h; y++) {
+            int pi = (padding_l * padded_h) + (w * padded_h) + (x * padded_h) + y;
+            int curr_byte = pi / 8;
+            set_bit(&pixel_bits[curr_byte], 7 - (pi % 8), 0);
+        }
+    }
+
+    // Outputs the bitmap width and height after padding
+    *bitmap_w = w + padding_l + padding_r;
+    *bitmap_h = h + padding_b;
 }
 
 int escpos_printer_upload(escpos_printer *printer, const unsigned char *pixel_bits, const int w, const int h)
@@ -206,8 +260,11 @@ int escpos_printer_image(escpos_printer *printer, const char * const image_path)
             // if the image's height exceeds ESCPOS_CHUNK_DOT_HEIGHT pixels,
             // it is printed in chunks of x * ESCPOS_CHUNK_DOT_HEIGHT pixels.
             int chunk_height = (y + 1) * ESCPOS_CHUNK_DOT_HEIGHT <= height ? ESCPOS_CHUNK_DOT_HEIGHT : height - (y * ESCPOS_CHUNK_DOT_HEIGHT);
-            convert_image_to_bits(pixel_bits, image_data + (y * print_height * width * comp), width, chunk_height, comp);
-            if ((result = escpos_printer_upload(printer, pixel_bits, width, chunk_height)) == 0) {
+
+            int bitmap_w, bitmap_h;
+            convert_image_to_bits(pixel_bits, image_data + (y * print_height * width * comp), width, chunk_height, comp, &bitmap_w, &bitmap_h);
+
+            if ((result = escpos_printer_upload(printer, pixel_bits, bitmap_w, bitmap_h)) == 0) {
                 result = escpos_printer_print(printer);
             }
 
