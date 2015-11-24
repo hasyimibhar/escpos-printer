@@ -34,10 +34,25 @@ escpos_printer *escpos_printer_network(const char * const addr, const short port
         } else {
             printer = (escpos_printer *)malloc(sizeof(escpos_printer));
             printer->sockfd = sockfd;
+            printer->config.chunk_overlap = ESCPOS_CHUNK_OVERLAP;
         }
     }
 
     return printer;
+}
+
+int escpos_printer_config(escpos_printer *printer, const escpos_config * const config)
+{
+    assert(printer != NULL);
+    assert(config != NULL);
+
+    if (config->chunk_overlap < 0) {
+        last_error = ESCPOS_ERROR_INVALID_CONFIG;
+        return 1;
+    } else {
+        printer->config = *config;
+        return 0;
+    }
 }
 
 void escpos_printer_destroy(escpos_printer *printer)
@@ -251,7 +266,7 @@ int escpos_printer_image(escpos_printer *printer, const char * const image_path)
 
     if (image_data != NULL) {
         int byte_width = ESCPOS_MAX_DOT_WIDTH / 8;
-        int print_height = ESCPOS_CHUNK_DOT_HEIGHT - ESCPOS_CHUNK_OVERLAP;
+        int print_height = ESCPOS_CHUNK_DOT_HEIGHT - printer->config.chunk_overlap;
         unsigned char pixel_bits[byte_width * ESCPOS_CHUNK_DOT_HEIGHT];
 
         int c = 0;
