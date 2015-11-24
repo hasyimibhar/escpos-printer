@@ -19,6 +19,6 @@ extern void escpos_printer_destroy(escpos_printer *printer);
 extern int escpos_printer_raw(escpos_printer *printer, const char * const message, const int len);
 extern int escpos_printer_cut(escpos_printer *printer);
 extern int escpos_printer_feed(escpos_printer *printer, const int lines);
-extern int escpos_printer_image(escpos_printer *printer, const char * const image_path);
+extern int escpos_printer_image(escpos_printer *printer, const unsigned char * const image_data, const int width, const int height);
 
 #endif

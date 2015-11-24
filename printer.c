@@ -9,9 +9,6 @@
 #include "error_private.h"
 #include "constants.h"
 
-#define STB_IMAGE_IMPLEMENTATION
-#include "stb_image.h"
-
 escpos_printer *escpos_printer_network(const char * const addr, const short port)
 {
     assert(addr != NULL);
@@ -112,34 +109,6 @@ void set_bit(unsigned char *byte, const int i, const int bit)
     }
 }
 
-int convert_to_bit(const unsigned char *pixel, const int comp)
-{
-    assert(pixel != NULL);
-    assert(comp > 0);
-
-    int bit;
-
-    switch (comp) {
-    case ESCPOS_COMP_G:
-    case ESCPOS_COMP_GA:
-        bit = *pixel < 128;
-        break;
-
-    case ESCPOS_COMP_RGB:
-    case ESCPOS_COMP_RGBA:
-        {
-            unsigned char r = *pixel;
-            unsigned char g = *(pixel + 1);
-            unsigned char b = *(pixel + 2);
-            // Average the colors
-            bit = ((r + g + b) / 3) < 128;
-        }
-        break;
-    }
-
-    return bit;
-}
-
 // Calculates the padding required so that the size fits in 32 bits
 void calculate_padding(const int size, int *padding_l, int *padding_r)
 {
@@ -160,7 +129,6 @@ void convert_image_to_bits(unsigned char *pixel_bits,
                            const unsigned char *image_data,
                            const int w,
                            const int h,
-                           const int comp,
                            int *bitmap_w,
                            int *bitmap_h)
 {
@@ -191,7 +159,8 @@ void convert_image_to_bits(unsigned char *pixel_bits,
         for (int y = 0; y < padded_h; y++) {
             int pi = (padding_l * padded_h) + (x * padded_h) + y;
             int curr_byte = pi / 8;
-            int bit = y < h ? convert_to_bit(image_data + (y * w * comp) + (x * comp), comp) : 0;
+            unsigned char pixel = image_data[(y * w) + x];
+            int bit = y < h ? pixel < 128 : 0;
 
             // The bit is set from left to right
             set_bit(&pixel_bits[curr_byte], 7 - (pi % 8), bit);
@@ -256,15 +225,14 @@ int escpos_printer_print(escpos_printer *printer)
     return result;
 }
 
-int escpos_printer_image(escpos_printer *printer, const char * const image_path)
+int escpos_printer_image(escpos_printer *printer, const unsigned char * const image_data, const int width, const int height)
 {
     assert(printer != NULL);
-    assert(image_path != NULL);
+    assert(image_data != NULL);
+    assert(width > 0 && width <= 512);
+    assert(height > 0);
 
-    int width, height, comp;
     int result = 0;
-
-    unsigned char *image_data = stbi_load(image_path, &width, &height, &comp, 0);
 
     if (image_data != NULL) {
         int byte_width = ESCPOS_MAX_DOT_WIDTH / 8;
@@ -286,7 +254,7 @@ int escpos_printer_image(escpos_printer *printer, const char * const image_path)
             int chunk_height = (c + 1) * ESCPOS_CHUNK_DOT_HEIGHT <= height ? ESCPOS_CHUNK_DOT_HEIGHT : height - (c * ESCPOS_CHUNK_DOT_HEIGHT);
 
             int bitmap_w, bitmap_h;
-            convert_image_to_bits(pixel_bits, image_data + (c * print_height * width * comp), width, chunk_height, comp, &bitmap_w, &bitmap_h);
+            convert_image_to_bits(pixel_bits, image_data + (c * print_height * width), width, chunk_height, &bitmap_w, &bitmap_h);
 
             if ((result = escpos_printer_upload(printer, pixel_bits, bitmap_w, bitmap_h)) == 0) {
                 result = escpos_printer_print(printer);

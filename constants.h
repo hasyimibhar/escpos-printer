@@ -22,11 +22,4 @@ static const int ESCPOS_CHUNK_DOT_HEIGHT = 512;
 // rows of pixels.
 static const int ESCPOS_CHUNK_OVERLAP = 2;
 
-enum {
-    ESCPOS_COMP_G = 1,
-    ESCPOS_COMP_GA = 2,
-    ESCPOS_COMP_RGB = 3,
-    ESCPOS_COMP_RGBA = 4
-};
-
 #endif
