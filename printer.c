@@ -135,7 +135,7 @@ void calculate_padding(const int size, int *padding_l, int *padding_r)
     } else {
         int padding = 32 - (size % 32);
         *padding_l = padding / 2;
-        *padding_r = padding / 2 + (padding % 32 == 0 ? 0 : 1);
+        *padding_r = padding / 2 + (padding % 2 == 0 ? 0 : 1);
     }
 }
 
