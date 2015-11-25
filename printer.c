@@ -187,7 +187,7 @@ int escpos_printer_upload(escpos_printer *printer,
 {
     assert(printer != NULL);
     assert(pixel_bits != NULL);
-    assert(w > 0 && w <= ESCPOS_CHUNK_DOT_HEIGHT);
+    assert(w > 0 && w <= ESCPOS_MAX_DOT_WIDTH);
     assert(h > 0 && h <= ESCPOS_CHUNK_DOT_HEIGHT);
     assert(w % 32 == 0);
     assert(h % 32 == 0);
