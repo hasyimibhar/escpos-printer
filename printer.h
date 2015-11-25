@@ -61,10 +61,11 @@ extern int escpos_printer_raw(escpos_printer *printer, const char * const messag
 //
 // Params:
 // - printer: the printer
+// - lines: no. of lines to feed before cutting
 //
 // Return value: 0 is successful, non-zero otherwise.
 // If it fails, use escpos_last_error() to get the error code.
-extern int escpos_printer_cut(escpos_printer *printer);
+extern int escpos_printer_cut(escpos_printer *printer, const int lines);
 
 // Feeds n lines
 //

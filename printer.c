@@ -84,9 +84,12 @@ int escpos_printer_raw(escpos_printer *printer, const char * const message, cons
     return !(sent == total);
 }
 
-int escpos_printer_cut(escpos_printer *printer)
+int escpos_printer_cut(escpos_printer *printer, const int lines)
 {
-    return escpos_printer_raw(printer, ESCPOS_CMD_CUT, 3);
+    char buffer[4];
+    strncpy(buffer, ESCPOS_CMD_CUT, 3);
+    buffer[3] = lines;
+    return escpos_printer_raw(printer, buffer, sizeof(buffer));
 }
 
 int escpos_printer_feed(escpos_printer *printer, const int lines)
