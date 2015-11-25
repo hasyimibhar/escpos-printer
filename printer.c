@@ -33,7 +33,6 @@ escpos_printer *escpos_printer_network(const char * const addr, const short port
             printer->sockfd = sockfd;
             printer->config.max_width = ESCPOS_MAX_DOT_WIDTH;
             printer->config.chunk_height = ESCPOS_CHUNK_DOT_HEIGHT;
-            printer->config.chunk_overlap = ESCPOS_CHUNK_OVERLAP;
         }
     }
 
@@ -45,13 +44,8 @@ int escpos_printer_config(escpos_printer *printer, const escpos_config * const c
     assert(printer != NULL);
     assert(config != NULL);
 
-    if (config->chunk_overlap < 0) {
-        last_error = ESCPOS_ERROR_INVALID_CONFIG;
-        return 1;
-    } else {
-        printer->config = *config;
-        return 0;
-    }
+    printer->config = *config;
+    return 0;
 }
 
 void escpos_printer_destroy(escpos_printer *printer)
@@ -146,35 +140,29 @@ void convert_image_to_bits(unsigned char *pixel_bits,
     calculate_padding(w, &padding_l, &padding_r);
     calculate_padding(h, &padding_t, &padding_b);
 
-    // We only need to add the padding to the bottom for height.
-    // This is because when printing long images, only the last
-    // chunk will have the irregular height.
-    padding_b += padding_t;
-    int padded_h = h + padding_b;
+    int padded_w = w + padding_l + padding_r;
 
-    for (int x = 0; x < padding_l; x++) {
-        for (int y = 0; y < padded_h; y++) {
-            int pi = (x * padded_h) + y;
+    for (int y = 0; y < padding_t; y++) {
+        for (int x = 0; x < padded_w; x++) {
+            int pi = (y * padded_w) + x;
             int curr_byte = pi / 8;
             set_bit(&pixel_bits[curr_byte], 7 - (pi % 8), 0);
         }
     }
 
-    for (int x = 0; x < w; x++) {
-        for (int y = 0; y < padded_h; y++) {
-            int pi = (padding_l * padded_h) + (x * padded_h) + y;
+    for (int y = 0; y < h; y++) {
+        for (int x = 0; x < padded_w; x++) {
+            int pi = (padding_t * padded_w) + (y * padded_w) + x;
             int curr_byte = pi / 8;
             unsigned char pixel = image_data[(y * w) + x];
             int bit = y < h ? pixel < 128 : 0;
-
-            // The bit is set from left to right
             set_bit(&pixel_bits[curr_byte], 7 - (pi % 8), bit);
         }
     }
 
-    for (int x = 0; x < padding_r; x++) {
-        for (int y = 0; y < padded_h; y++) {
-            int pi = (padding_l * padded_h) + (w * padded_h) + (x * padded_h) + y;
+    for (int y = 0; y < padding_b; y++) {
+        for (int x = 0; x < padded_w; x++) {
+            int pi = (padding_t * padded_w) + (h * padded_w) + (y * padded_w) + x;
             int curr_byte = pi / 8;
             set_bit(&pixel_bits[curr_byte], 7 - (pi % 8), 0);
         }
@@ -182,13 +170,13 @@ void convert_image_to_bits(unsigned char *pixel_bits,
 
     // Outputs the bitmap width and height after padding
     *bitmap_w = w + padding_l + padding_r;
-    *bitmap_h = h + padding_b;
+    *bitmap_h = h + padding_t + padding_b;
 }
 
-int escpos_printer_upload(escpos_printer *printer,
-                          const unsigned char *pixel_bits,
-                          const int w,
-                          const int h)
+int escpos_printer_print(escpos_printer *printer,
+                         const unsigned char *pixel_bits,
+                         const int w,
+                         const int h)
 {
     assert(printer != NULL);
     assert(pixel_bits != NULL);
@@ -197,34 +185,15 @@ int escpos_printer_upload(escpos_printer *printer,
     assert(w % 32 == 0);
     assert(h % 32 == 0);
 
-    // Header (4 bytes): [ESCPOS_CMD_DEFINE_DL_BIT_IMAGE] [byte_width] [byte_height]
+    int result = escpos_printer_raw(printer, ESCPOS_CMD_PRINT_RASTER_BIT_IMAGE, 4);
+
     char buffer[4];
-    strncpy(buffer, ESCPOS_CMD_DEFINE_DL_BIT_IMAGE, 2);
-    buffer[2] = (unsigned char)(w / 8);
-    buffer[3] = (unsigned char)(h / 8);
-
-    int result = 0;
-    if ((result = escpos_printer_raw(printer, buffer, 4)) == 0) {
-        for (int i = 0; i < (w * (h / 8)) / 4; i++) {
-            result = escpos_printer_raw(printer, (char *)(pixel_bits + (i * 4)), 4);
-            if (result != 0) {
-                break;
-            }
-        }
-    }
-
-    if (result != 0) {
-        last_error = ESCPOS_ERROR_IMAGE_UPLOAD_FAILED;
-    }
-
-    return result;
-}
-
-int escpos_printer_print(escpos_printer *printer)
-{
-    assert(printer != NULL);
-
-    int result = escpos_printer_raw(printer, ESCPOS_CMD_PRINT_DL_BIT_IMAGE, 3);
+    buffer[0] = (((w / 8) >> 0) & 0xFF);
+    buffer[1] = (((w / 8) >> 8) & 0xFF);
+    buffer[2] = ((h >> 0) & 0xFF);
+    buffer[3] = ((h >> 8) & 0xFF);
+    result = escpos_printer_raw(printer, buffer, 4);
+    result = escpos_printer_raw(printer, (char *)pixel_bits, (w / 8) * h);
 
     if (result != 0) {
         last_error = ESCPOS_ERROR_IMAGE_PRINT_FAILED;
@@ -247,15 +216,19 @@ int escpos_printer_image(escpos_printer *printer,
 
     if (image_data != NULL) {
         int byte_width = printer->config.max_width / 8;
-        int print_height = printer->config.chunk_height - printer->config.chunk_overlap;
-        unsigned char pixel_bits[byte_width * printer->config.chunk_height];
+
+        int padding_t, padding_b;
+        calculate_padding(height, &padding_t, &padding_b);
+        int print_height = height + padding_t + padding_b;
+
+        unsigned char pixel_bits[byte_width * print_height];
 
         int c = 0;
         int chunks = 0;
         if (height <= printer->config.chunk_height) {
             chunks = 1;
         } else {
-            chunks = (height / print_height) + (height % print_height ? 1 : 0);
+            chunks = (height / printer->config.chunk_height) + (height % printer->config.chunk_height ? 1 : 0);
         }
 
         while (c < chunks) {
@@ -269,16 +242,13 @@ int escpos_printer_image(escpos_printer *printer,
             int bitmap_w, bitmap_h;
             convert_image_to_bits(
                 pixel_bits,
-                image_data + (c * print_height * width),
+                image_data + (c * printer->config.chunk_height * width),
                 width,
                 chunk_height,
                 &bitmap_w,
                 &bitmap_h);
 
-            if ((result = escpos_printer_upload(printer, pixel_bits, bitmap_w, bitmap_h)) == 0) {
-                result = escpos_printer_print(printer);
-            }
-
+            result = escpos_printer_print(printer, pixel_bits, bitmap_w, bitmap_h);
             if (result != 0) {
                 break;
             }

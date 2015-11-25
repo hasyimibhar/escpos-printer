@@ -9,10 +9,6 @@ typedef struct escpos_config {
     // See ESCPOS_CHUNK_DOT_HEIGHT in constants.h
     // Default value: ESCPOS_CHUNK_DOT_HEIGHT
     int chunk_height;
-
-    // See ESCPOS_CHUNK_OVERLAP in constants.h
-    // Default value: ESCPOS_CHUNK_OVERLAP
-    int chunk_overlap;
 } escpos_config;
 
 typedef struct escpos_printer {
