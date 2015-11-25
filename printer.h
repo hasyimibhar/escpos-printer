@@ -2,6 +2,14 @@
 #define ESCPOSPRINTER_PRINTER_H
 
 typedef struct escpos_config {
+    // See ESCPOS_MAX_DOT_WIDTH in constants.h
+    // Default value: ESCPOS_MAX_DOT_WIDTH
+    int max_width;
+
+    // See ESCPOS_CHUNK_DOT_HEIGHT in constants.h
+    // Default value: ESCPOS_CHUNK_DOT_HEIGHT
+    int chunk_height;
+
     // See ESCPOS_CHUNK_OVERLAP in constants.h
     // Default value: ESCPOS_CHUNK_OVERLAP
     int chunk_overlap;

@@ -31,6 +31,8 @@ escpos_printer *escpos_printer_network(const char * const addr, const short port
         } else {
             printer = (escpos_printer *)malloc(sizeof(escpos_printer));
             printer->sockfd = sockfd;
+            printer->config.max_width = ESCPOS_MAX_DOT_WIDTH;
+            printer->config.chunk_height = ESCPOS_CHUNK_DOT_HEIGHT;
             printer->config.chunk_overlap = ESCPOS_CHUNK_OVERLAP;
         }
     }
@@ -187,8 +189,8 @@ int escpos_printer_upload(escpos_printer *printer,
 {
     assert(printer != NULL);
     assert(pixel_bits != NULL);
-    assert(w > 0 && w <= ESCPOS_MAX_DOT_WIDTH);
-    assert(h > 0 && h <= ESCPOS_CHUNK_DOT_HEIGHT);
+    assert(w > 0 && w <= printer->config.max_width);
+    assert(h > 0 && h <= printer->config.chunk_height);
     assert(w % 32 == 0);
     assert(h % 32 == 0);
 
@@ -235,19 +237,19 @@ int escpos_printer_image(escpos_printer *printer,
 {
     assert(printer != NULL);
     assert(image_data != NULL);
-    assert(width > 0 && width <= ESCPOS_MAX_DOT_WIDTH);
+    assert(width > 0 && width <= printer->config.max_width);
     assert(height > 0);
 
     int result = 0;
 
     if (image_data != NULL) {
-        int byte_width = ESCPOS_MAX_DOT_WIDTH / 8;
-        int print_height = ESCPOS_CHUNK_DOT_HEIGHT - printer->config.chunk_overlap;
-        unsigned char pixel_bits[byte_width * ESCPOS_CHUNK_DOT_HEIGHT];
+        int byte_width = printer->config.max_width / 8;
+        int print_height = printer->config.chunk_height - printer->config.chunk_overlap;
+        unsigned char pixel_bits[byte_width * printer->config.chunk_height];
 
         int c = 0;
         int chunks = 0;
-        if (height <= ESCPOS_CHUNK_DOT_HEIGHT) {
+        if (height <= printer->config.chunk_height) {
             chunks = 1;
         } else {
             chunks = (height / print_height) + (height % print_height ? 1 : 0);
@@ -255,11 +257,11 @@ int escpos_printer_image(escpos_printer *printer,
 
         while (c < chunks) {
             // Because the printer's image buffer has a limited memory,
-            // if the image's height exceeds ESCPOS_CHUNK_DOT_HEIGHT pixels,
-            // it is printed in chunks of x * ESCPOS_CHUNK_DOT_HEIGHT pixels.
-            int chunk_height = (c + 1) * ESCPOS_CHUNK_DOT_HEIGHT <= height ?
-                ESCPOS_CHUNK_DOT_HEIGHT :
-                height - (c * ESCPOS_CHUNK_DOT_HEIGHT);
+            // if the image's height exceeds config.chunk_height pixels,
+            // it is printed in chunks of x * config.chunk_height pixels.
+            int chunk_height = (c + 1) * printer->config.chunk_height <= height ?
+                printer->config.chunk_height :
+                height - (c * printer->config.chunk_height);
 
             int bitmap_w, bitmap_h;
             convert_image_to_bits(
