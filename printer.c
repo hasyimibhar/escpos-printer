@@ -235,7 +235,7 @@ int escpos_printer_image(escpos_printer *printer,
 {
     assert(printer != NULL);
     assert(image_data != NULL);
-    assert(width > 0 && width <= 512);
+    assert(width > 0 && width <= ESCPOS_MAX_DOT_WIDTH);
     assert(height > 0);
 
     int result = 0;
