@@ -142,17 +142,14 @@ void convert_image_to_bits(unsigned char *pixel_bits,
 
     int padded_w = w + padding_l + padding_r;
 
-    for (int y = 0; y < padding_t; y++) {
-        for (int x = 0; x < padded_w; x++) {
-            int pi = (y * padded_w) + x;
-            int curr_byte = pi / 8;
-            set_bit(&pixel_bits[curr_byte], 7 - (pi % 8), 0);
-        }
-    }
+    // We only need to add the padding to the bottom for height.
+    // This is because when printing long images, only the last
+    // chunk will have the irregular height.
+    padding_b += padding_t;
 
     for (int y = 0; y < h; y++) {
         for (int x = 0; x < padded_w; x++) {
-            int pi = (padding_t * padded_w) + (y * padded_w) + x;
+            int pi = (y * padded_w) + x;
             int curr_byte = pi / 8;
             unsigned char pixel = image_data[(y * w) + x];
             int bit = y < h ? pixel < 128 : 0;
@@ -162,7 +159,7 @@ void convert_image_to_bits(unsigned char *pixel_bits,
 
     for (int y = 0; y < padding_b; y++) {
         for (int x = 0; x < padded_w; x++) {
-            int pi = (padding_t * padded_w) + (h * padded_w) + (y * padded_w) + x;
+            int pi = (h * padded_w) + (y * padded_w) + x;
             int curr_byte = pi / 8;
             set_bit(&pixel_bits[curr_byte], 7 - (pi % 8), 0);
         }
@@ -170,7 +167,7 @@ void convert_image_to_bits(unsigned char *pixel_bits,
 
     // Outputs the bitmap width and height after padding
     *bitmap_w = w + padding_l + padding_r;
-    *bitmap_h = h + padding_t + padding_b;
+    *bitmap_h = h + padding_b;
 }
 
 int escpos_printer_print(escpos_printer *printer,
