@@ -9,6 +9,8 @@ typedef struct escpos_config {
     // See ESCPOS_CHUNK_DOT_HEIGHT in constants.h
     // Default value: ESCPOS_CHUNK_DOT_HEIGHT
     int chunk_height;
+
+    unsigned int is_network_printer : 1;
 } escpos_config;
 
 typedef struct escpos_printer {
@@ -25,6 +27,16 @@ typedef struct escpos_printer {
 // Return value: the printer object if successful, NULL otherwise.
 // If it fails, use escpos_last_error() to get the error code.
 extern escpos_printer *escpos_printer_network(const char * const addr, const short port);
+
+// Connects to an ESC/POS printer via serial
+//
+// Params:
+// - portname: the path to the serial file to be used
+// - baudrate: the baudrate for serial communication
+//
+// Return value: the printer object if successful, NULL otherwise.
+// If it fails, use escpos_last_error() to get the error code.
+extern escpos_printer *escpos_printer_serial(const char * const portname, const int baudrate);
 
 // Modifies the printer's configuration
 //

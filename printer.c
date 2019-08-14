@@ -1,4 +1,3 @@
-#include "printer.h"
 #include <assert.h>
 #include <stdlib.h>
 #include <arpa/inet.h>
@@ -6,6 +5,9 @@
 #include <string.h>
 #include <unistd.h>
 #include <stdio.h>
+
+#include "serial.h"
+#include "printer.h"
 #include "error_private.h"
 #include "constants.h"
 
@@ -33,7 +35,32 @@ escpos_printer *escpos_printer_network(const char * const addr, const short port
             printer->sockfd = sockfd;
             printer->config.max_width = ESCPOS_MAX_DOT_WIDTH;
             printer->config.chunk_height = ESCPOS_CHUNK_DOT_HEIGHT;
+            printer->config.is_network_printer = 1;
         }
+    }
+
+    return printer;
+}
+
+escpos_printer *escpos_printer_serial(const char * const portname, const int baudrate)
+{
+    assert(portname != NULL);
+
+    int serialfd;
+    escpos_printer *printer = NULL;
+
+    serialfd = open(portname, O_WRONLY | O_NOCTTY | O_SYNC);
+
+    if (serialfd < 0) {
+        last_error = ESCPOS_ERROR_SOCK;
+    } else {
+        set_interface_attribs(serialfd, baudrate);
+
+        printer = (escpos_printer *)malloc(sizeof(escpos_printer));
+        printer->sockfd = serialfd;
+        printer->config.max_width = ESCPOS_MAX_DOT_WIDTH;
+        printer->config.chunk_height = ESCPOS_CHUNK_DOT_HEIGHT;
+        printer->config.is_network_printer = 0;
     }
 
     return printer;
@@ -64,15 +91,25 @@ int escpos_printer_raw(escpos_printer *printer, const char * const message, cons
     int sent = 0;
     int bytes = 0;
 
-    // Make sure send() sends all data
-    while (sent < total) {
-        bytes = send(printer->sockfd, message, total, 0);
-        if (bytes == -1) {
-            last_error = ESCPOS_ERROR_SEND_FAILED;
-            break;
-        } else {
-            sent += bytes;
+    if (printer->config.is_network_printer) {
+        // Network printer logic.
+        // Make sure send() sends all data
+        while (sent < total) {
+            bytes = send(printer->sockfd, message, total, 0);
+            if (bytes == -1) {
+                last_error = ESCPOS_ERROR_SEND_FAILED;
+                break;
+            } else {
+                sent += bytes;
+            }
         }
+    } else {
+        // Serial printer logic.
+        sent = write(printer->sockfd, message, len);
+        if (sent != len) {
+            last_error = ESCPOS_ERROR_SEND_FAILED;
+        }
+        tcdrain(printer->sockfd);
     }
 
     return !(sent == total);
